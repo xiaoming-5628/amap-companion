@@ -2293,9 +2293,12 @@ public class OverlayService extends Service {
 
         FrameLayout speedBox = new FrameLayout(context);
         speedBox.setTag("speed_box");
-        ImageView speedIcon = new ImageView(context);
-        speedIcon.setImageResource(R.drawable.widget_drawable_auto_ic_edog_limit_speed_loading);
-        speedIcon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        // 用 TextView + Emoji 替代 ImageView
+        TextView speedIcon = new TextView(context);
+        speedIcon.setText("🚀");
+        speedIcon.setTextColor(0xFFDC2626);
+        speedIcon.setTextSize(scaledSp(18f, scale));
+        speedIcon.setGravity(Gravity.CENTER);
         speedBox.addView(speedIcon, new FrameLayout.LayoutParams(iconSize, iconSize));
         TextView speedText = new TextView(context);
         speedText.setTextColor(0xFFDC2626);
@@ -2313,9 +2316,12 @@ public class OverlayService extends Service {
         cameraBox.setOrientation(LinearLayout.HORIZONTAL);
         cameraBox.setGravity(Gravity.CENTER_VERTICAL);
         cameraBox.setVisibility(View.GONE);
-        ImageView cameraIcon = new ImageView(context);
-        cameraIcon.setImageResource(R.drawable.widget_drawable_auto_ic_edog_camera_loading);
-        cameraIcon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        // 用 TextView + Emoji 替代 ImageView
+        TextView cameraIcon = new TextView(context);
+        cameraIcon.setText("📷");
+        cameraIcon.setTextColor(primaryTextColor());
+        cameraIcon.setTextSize(scaledSp(18f, scale));
+        cameraIcon.setGravity(Gravity.CENTER);
         cameraBox.addView(cameraIcon, new LinearLayout.LayoutParams(iconSize, iconSize));
         TextView cameraText = new TextView(context);
         cameraText.setTextColor(primaryTextColor());
@@ -2331,9 +2337,12 @@ public class OverlayService extends Service {
         lightBox.setOrientation(LinearLayout.HORIZONTAL);
         lightBox.setGravity(Gravity.CENTER_VERTICAL);
         lightBox.setVisibility(View.GONE);
-        ImageView lightIcon = new ImageView(context);
-        lightIcon.setImageResource(R.drawable.widget_drawable_auto_ic_edog_traffic_loading);
-        lightIcon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        // 用 TextView + Emoji 替代 ImageView
+        TextView lightIcon = new TextView(context);
+        lightIcon.setText("🚥");
+        lightIcon.setTextColor(primaryTextColor());
+        lightIcon.setTextSize(scaledSp(18f, scale));
+        lightIcon.setGravity(Gravity.CENTER);
         lightBox.addView(lightIcon, new LinearLayout.LayoutParams(iconSize, iconSize));
         TextView lightCount = new TextView(context);
         lightCount.setTextColor(primaryTextColor());
@@ -2344,6 +2353,35 @@ public class OverlayService extends Service {
 
         FontManager.applyToViewTree(context, row);
         return row;
+    }
+    
+    // 获取电子狗图标的 Emoji
+    private String getEdogIconEmoji(int type) {
+        switch (type) {
+            case 4473: // 限速
+            case 4474:
+                return "🚀";
+            case 4475: // 红绿灯
+            case 4476:
+                return "🚥";
+            case 4477: // 摄像头
+            case 4478:
+            case 4479:
+            case 4480:
+            case 4481:
+                return "📷";
+            case 4482: // 公交专用道
+                return "🚍";
+            case 4483: // 应急车道
+                return "🚑";
+            case 4484: // 非机动车道
+                return "🚴";
+            case 4485: // 区间测速
+            case 4486:
+                return "⏱";
+            default:
+                return "⚠";
+        }
     }
 
     private void updateDistanceBadge(TextView badge, String distance) {
@@ -2378,16 +2416,31 @@ public class OverlayService extends Service {
         if (view == null) {
             return;
         }
-        int resId = turnIconResource(icon);
-        float rotation = 0f;
-        float scaleX = 1f;
-        if (resId == 0) {
-            resId = fallbackTurnIconResource(icon);
+        // 使用 Emoji 替代图片资源
+        view.setVisibility(View.GONE); // 隐藏原来的 ImageView
+        
+        // 如果是 turnDetailRow，我们需要找到或添加一个 TextView
+        // 这里我们用 setTag 来存转向信息，后面可以用代码绘制
+        view.setTag(icon);
+    }
+    
+    // 获取转向图标的 Emoji
+    private String getTurnIconEmoji(int icon) {
+        switch (icon) {
+            case 2: return "↰";
+            case 3: return "↱";
+            case 4: return "↲";
+            case 5: return "↳";
+            case 6: return "⟲";
+            case 7: return "⟳";
+            case 8: return "↑";
+            case 9: return "↗";
+            case 10: return "↙";
+            case 11: return "↖";
+            case 12: return "↘";
+            case 19: return "⤴";
+            default: return "➜";
         }
-        view.setImageResource(resId);
-        view.setRotation(rotation);
-        view.setScaleX(scaleX);
-        view.setVisibility(View.VISIBLE);
     }
 
     private int turnIconResource(int icon) {
@@ -3414,12 +3467,29 @@ public class OverlayService extends Service {
             return image;
         }
 
-        ImageView image = new ImageView(context);
-        image.setImageResource(defaultCruiseArrowResource(state.dir));
-        image.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        image.setAdjustViewBounds(false);
-        image.setPadding(scaledDp(1, scale), scaledDp(1, scale), scaledDp(1, scale), scaledDp(1, scale));
-        return image;
+        // 使用 TextView + Emoji 替代 ImageView
+        TextView arrow = new TextView(context);
+        arrow.setText(getCruiseArrowEmoji(state.dir));
+        arrow.setTextColor(Color.WHITE);
+        arrow.setTextSize(scaledSp(24f, scale));
+        arrow.setGravity(Gravity.CENTER);
+        arrow.setTypeface(Typeface.DEFAULT_BOLD);
+        return arrow;
+    }
+    
+    // 获取巡航箭头的 Emoji
+    private String getCruiseArrowEmoji(int dir) {
+        switch (dir) {
+            case 0: return "↑";
+            case 1:
+            case 5:
+            case 6: return "↰";
+            case 2:
+            case 3:
+            case 7:
+            case 8: return "↱";
+            default: return "➜";
+        }
     }
 
     private int defaultCruiseArrowResource(int dir) {
@@ -3865,8 +3935,9 @@ public class OverlayService extends Service {
             if (hasCamera) {
                 cameraBox.setVisibility(View.VISIBLE);
                 LinearLayout box = (LinearLayout) cameraBox;
-                if (box.getChildCount() > 0 && box.getChildAt(0) instanceof ImageView) {
-                    ((ImageView) box.getChildAt(0)).setImageResource(edogIconResource(cameraType));
+                // 更新 TextView 的 Emoji，而不是 ImageView
+                if (box.getChildCount() > 0 && box.getChildAt(0) instanceof TextView) {
+                    ((TextView) box.getChildAt(0)).setText(getEdogIconEmoji(cameraType));
                 }
                 if (box.getChildCount() > 1 && box.getChildAt(1) instanceof TextView) {
                     ((TextView) box.getChildAt(1)).setText(formatDistance(cameraDist));
@@ -4597,8 +4668,9 @@ public class OverlayService extends Service {
         } else {
             builder = new Notification.Builder(this);
         }
+        // 使用系统图标替代自定义图标，避免资源依赖
         return builder
-                .setSmallIcon(R.drawable.ic_stat)
+                .setSmallIcon(android.R.drawable.ic_dialog_map)
                 .setContentTitle("AMap Companion")
                 .setContentText("\u76d1\u542c\u9ad8\u5fb7\u5bfc\u822a/\u5de1\u822a\u5e7f\u64ad")
                 .setOngoing(true)

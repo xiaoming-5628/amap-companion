@@ -156,9 +156,10 @@ public class LaneBarView extends View {
     }
 
     private void drawLaneIcon(Canvas canvas, int laneCode, LaneIcon icon, float left, float width, boolean laneRecommended) {
-        if (drawAmapLaneBitmap(canvas, laneCode, left, width, laneRecommended)) {
-            return;
-        }
+        // 强制使用代码绘制，不依赖 PNG 图片
+        // if (drawAmapLaneBitmap(canvas, laneCode, left, width, laneRecommended)) {
+        //     return;
+        // }
         paint.setStyle(Paint.Style.STROKE);
         paint.setStrokeCap(Paint.Cap.ROUND);
         paint.setStrokeJoin(Paint.Join.ROUND);
