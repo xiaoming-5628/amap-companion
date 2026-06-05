@@ -1,0 +1,17 @@
+@echo off
+REM ========================================
+REM   构建配置文件 (复制为 build_config.bat 并修改)
+REM ========================================
+
+REM Android SDK 路径 (根据你的实际安装位置修改)
+set ANDROID_HOME=D:\Android\SDK
+
+REM Java JDK 路径 (可选，如果已配置环境变量可跳过)
+set JAVA_HOME=D:\Android\Java\jdk-17
+set PATH=%JAVA_HOME%\bin;%PATH%
+
+REM Android 构建工具版本 (可选，自动检测最新版)
+set ANDROID_BUILD_TOOLS_VERSION=
+
+REM Android 平台版本 (可选，自动检测最新版)
+set ANDROID_PLATFORM=

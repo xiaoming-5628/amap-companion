@@ -2,6 +2,7 @@ package com.autonavi.companion;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Color;
@@ -11,19 +12,17 @@ import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
-import android.text.format.DateFormat;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.Animation;
-import android.view.animation.AnimationUtils;
 import android.view.animation.ScaleAnimation;
 import android.widget.BaseAdapter;
 import android.widget.GridView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;

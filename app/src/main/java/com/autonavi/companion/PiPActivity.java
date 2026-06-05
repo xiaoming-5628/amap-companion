@@ -23,7 +23,7 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.annotation.RequiresApi;
+
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -245,7 +245,6 @@ public class PiPActivity extends Activity {
         }
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, android.content.res.Configuration newConfig) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig);
@@ -259,7 +258,6 @@ public class PiPActivity extends Activity {
         }
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.O)
     private void enterPictureInPictureMode() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             Rational aspectRatio = new Rational(9, 16);
