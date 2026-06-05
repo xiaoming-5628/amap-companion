@@ -97,6 +97,12 @@ public class LauncherActivity extends Activity {
         rightInfo.setPadding(0, 0, 0, 0);
         statusBar.addView(rightInfo);
 
+        TextView splitBtn = createRoundedButton("分屏", 0x3310B981, 0xFF6EE7B7);
+        splitBtn.setOnClickListener(v -> SplitScreenActivity.start(this));
+        LinearLayout.LayoutParams splitLp = new LinearLayout.LayoutParams(-2, -2);
+        splitLp.setMargins(0, 0, dp(12), 0);
+        rightInfo.addView(splitBtn, splitLp);
+
         TextView pipBtn = createRoundedButton("画中画", 0x333B82F6, 0xFF93C5FD);
         pipBtn.setOnClickListener(v -> PiPActivity.start(this, false));
         LinearLayout.LayoutParams pipLp = new LinearLayout.LayoutParams(-2, -2);
@@ -227,6 +233,87 @@ public class LauncherActivity extends Activity {
         }
     }
 
+    private void showAppActionMenu(AppInfo appInfo) {
+        // 创建对话框
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_NoActionBar);
+        
+        // 自定义布局
+        LinearLayout menuLayout = new LinearLayout(this);
+        menuLayout.setOrientation(LinearLayout.VERTICAL);
+        menuLayout.setBackgroundColor(0xFF1E293B);
+        menuLayout.setPadding(dp(20), dp(20), dp(20), dp(20));
+        
+        // 标题
+        TextView title = new TextView(this);
+        title.setText(appInfo.label);
+        title.setTextSize(20f);
+        title.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        title.setTextColor(Color.WHITE);
+        title.setPadding(0, 0, 0, dp(20));
+        menuLayout.addView(title);
+        
+        // 按钮1: 画中画
+        TextView pipAction = createMenuButton("画中画模式", 0x333B82F6, 0xFF93C5FD);
+        pipAction.setOnClickListener(v -> {
+            SharedPreferences prefs = getSharedPreferences("amap_companion", MODE_PRIVATE);
+            prefs.edit()
+                .putString(PiPActivity.PREF_PIP_PACKAGE, appInfo.packageName)
+                .putString(PiPActivity.PREF_PIP_LABEL, appInfo.label)
+                .apply();
+            
+            Toast.makeText(LauncherActivity.this, "已设置画中画: " + appInfo.label, Toast.LENGTH_SHORT).show();
+            
+            Intent launchIntent = getPackageManager().getLaunchIntentForPackage(appInfo.packageName);
+            if (launchIntent != null) {
+                launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(launchIntent);
+            }
+            
+            new android.os.Handler().postDelayed(() -> {
+                PiPActivity.start(LauncherActivity.this, true);
+            }, 500);
+        });
+        menuLayout.addView(pipAction);
+        
+        // 按钮2: 分屏
+        TextView splitAction = createMenuButton("添加到分屏", 0x3310B981, 0xFF6EE7B7);
+        splitAction.setOnClickListener(v -> {
+            // 保存到临时偏好设置，供分屏选择器使用
+            android.content.SharedPreferences prefs = getSharedPreferences("amap_companion", MODE_PRIVATE);
+            prefs.edit()
+                .putString("split_app1_package", appInfo.packageName)
+                .putString("split_app1_label", appInfo.label)
+                .apply();
+            
+            SplitScreenActivity.start(LauncherActivity.this);
+        });
+        LinearLayout.LayoutParams splitLp = new LinearLayout.LayoutParams(-1, -2);
+        splitLp.setMargins(0, dp(12), 0, 0);
+        splitAction.setLayoutParams(splitLp);
+        menuLayout.addView(splitAction);
+        
+        builder.setView(menuLayout);
+        android.app.AlertDialog dialog = builder.create();
+        dialog.show();
+    }
+    
+    private TextView createMenuButton(String text, int bgColor, int textColor) {
+        TextView btn = new TextView(this);
+        btn.setText(text);
+        btn.setTextSize(16f);
+        btn.setTextColor(textColor);
+        btn.setGravity(Gravity.CENTER);
+        btn.setPadding(dp(20), dp(16), dp(20), dp(16));
+        
+        android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+        bg.setColor(bgColor);
+        bg.setCornerRadius(dp(12));
+        bg.setStroke(dp(1), 0x26FFFFFF);
+        btn.setBackground(bg);
+        
+        return btn;
+    }
+
     private int dp(int px) {
         return (int) (px * getResources().getDisplayMetrics().density);
     }
@@ -298,26 +385,8 @@ public class LauncherActivity extends Activity {
             });
 
             itemLayout.setOnLongClickListener(v -> {
-                // 长按应用图标直接设置为画中画应用并启动
-                SharedPreferences prefs = getSharedPreferences("amap_companion", MODE_PRIVATE);
-                prefs.edit()
-                    .putString(PiPActivity.PREF_PIP_PACKAGE, appInfo.packageName)
-                    .putString(PiPActivity.PREF_PIP_LABEL, appInfo.label)
-                    .apply();
-                
-                Toast.makeText(LauncherActivity.this, "已设置画中画: " + appInfo.label, Toast.LENGTH_SHORT).show();
-                
-                // 启动应用并进入画中画
-                Intent launchIntent = getPackageManager().getLaunchIntentForPackage(appInfo.packageName);
-                if (launchIntent != null) {
-                    launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    startActivity(launchIntent);
-                }
-                
-                new android.os.Handler().postDelayed(() -> {
-                    PiPActivity.start(LauncherActivity.this, true);
-                }, 500);
-                
+                // 显示操作菜单
+                showAppActionMenu(appInfo);
                 return true;
             });
 

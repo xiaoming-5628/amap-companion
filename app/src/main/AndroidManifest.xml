@@ -50,6 +50,13 @@
             android:theme="@android:style/Theme.NoDisplay">
         </activity>
         <activity
+            android:name=".SplitScreenActivity"
+            android:exported="true"
+            android:resizeableActivity="true"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+            android:theme="@style/AppTheme">
+        </activity>
+        <activity
             android:name=".MainActivity"
             android:exported="true" />
         <service
