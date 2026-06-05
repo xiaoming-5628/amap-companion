@@ -94,7 +94,14 @@ public class LauncherActivity extends Activity {
         LinearLayout rightInfo = new LinearLayout(this);
         rightInfo.setOrientation(LinearLayout.HORIZONTAL);
         rightInfo.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
+        rightInfo.setPadding(0, 0, 0, 0);
         statusBar.addView(rightInfo);
+
+        TextView pipBtn = createRoundedButton("画中画", 0x333B82F6, 0xFF93C5FD);
+        pipBtn.setOnClickListener(v -> PiPActivity.start(this, false));
+        LinearLayout.LayoutParams pipLp = new LinearLayout.LayoutParams(-2, -2);
+        pipLp.setMargins(0, 0, dp(12), 0);
+        rightInfo.addView(pipBtn, pipLp);
 
         TextView settingsBtn = createRoundedButton("设置", 0x33FFFFFF, 0x66FFFFFF);
         settingsBtn.setOnClickListener(v -> {
@@ -288,6 +295,30 @@ public class LauncherActivity extends Activity {
             itemLayout.setOnClickListener(v -> {
                 animateClick(itemLayout);
                 launchApp(appInfo);
+            });
+
+            itemLayout.setOnLongClickListener(v -> {
+                // 长按应用图标直接设置为画中画应用并启动
+                SharedPreferences prefs = getSharedPreferences("amap_companion", MODE_PRIVATE);
+                prefs.edit()
+                    .putString(PiPActivity.PREF_PIP_PACKAGE, appInfo.packageName)
+                    .putString(PiPActivity.PREF_PIP_LABEL, appInfo.label)
+                    .apply();
+                
+                Toast.makeText(LauncherActivity.this, "已设置画中画: " + appInfo.label, Toast.LENGTH_SHORT).show();
+                
+                // 启动应用并进入画中画
+                Intent launchIntent = getPackageManager().getLaunchIntentForPackage(appInfo.packageName);
+                if (launchIntent != null) {
+                    launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(launchIntent);
+                }
+                
+                new android.os.Handler().postDelayed(() -> {
+                    PiPActivity.start(LauncherActivity.this, true);
+                }, 500);
+                
+                return true;
             });
 
             itemLayout.setOnFocusChangeListener((v, hasFocus) -> {
