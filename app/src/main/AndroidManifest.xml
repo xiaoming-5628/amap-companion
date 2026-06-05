@@ -23,18 +23,25 @@
     <application
         android:allowBackup="false"
         android:usesCleartextTraffic="true"
-        android:label="AMap Companion"
+        android:label="AMap Companion Launcher"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:theme="@style/AppTheme">
         <activity
-            android:name=".MainActivity"
-            android:exported="true">
+            android:name=".LauncherActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:stateNotNeeded="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".MainActivity"
+            android:exported="true" />
         <service
             android:name=".OverlayService"
             android:exported="false" />
