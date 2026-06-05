@@ -21,11 +21,19 @@ public class BootReceiver extends BroadcastReceiver {
         if (!isAutoStartEvent) {
             return;
         }
-        if (!MainActivity.isAutoStartEnabled(context)) {
-            Log.d(TAG, "skip auto starting overlay service after " + action);
-            return;
+        
+        // 检查是否需要启动悬浮窗服务
+        if (MainActivity.isAutoStartEnabled(context)) {
+            Log.d(TAG, "auto start overlay service after " + action);
+            MainActivity.startOverlayService(context);
         }
-        Log.d(TAG, "auto start overlay service after " + action);
-        MainActivity.startOverlayService(context);
+        
+        // 检查是否需要在开机时显示车载桌面（只在BOOT_COMPLETED时）
+        if (Intent.ACTION_BOOT_COMPLETED.equals(action) && MainActivity.isAutoStartLauncherEnabled(context)) {
+            Log.d(TAG, "auto start launcher after boot completed");
+            Intent launcherIntent = new Intent(context, LauncherActivity.class);
+            launcherIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            context.startActivity(launcherIntent);
+        }
     }
 }
