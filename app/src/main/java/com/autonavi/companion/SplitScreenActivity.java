@@ -3,8 +3,6 @@ package com.autonavi.companion;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
@@ -21,31 +19,16 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 
 public class SplitScreenActivity extends Activity {
 
-    private AppInfo selectedApp1 = null;
-    private AppInfo selectedApp2 = null;
-    private List<AppInfo> appList = new ArrayList<>();
+    private AppUtils.AppInfo selectedApp1 = null;
+    private AppUtils.AppInfo selectedApp2 = null;
+    private List<AppUtils.AppInfo> appList = new ArrayList<>();
     private SplitAppAdapter appAdapter;
     private LinearLayout selectionStatus;
-    private TextView statusText;
     private Button launchBtn;
-
-    static class AppInfo {
-        String label;
-        String packageName;
-        android.graphics.drawable.Drawable icon;
-
-        AppInfo(String label, String packageName, android.graphics.drawable.Drawable icon) {
-            this.label = label;
-            this.packageName = packageName;
-            this.icon = icon;
-        }
-    }
 
     public static void start(Context context) {
         Intent intent = new Intent(context, SplitScreenActivity.class);
@@ -67,7 +50,7 @@ public class SplitScreenActivity extends Activity {
         
         // 如果有预选的应用，自动选中它
         if (preselectedPackage != null) {
-            for (AppInfo app : appList) {
+            for (AppUtils.AppInfo app : appList) {
                 if (app.packageName.equals(preselectedPackage)) {
                     selectedApp1 = app;
                     updateSelectionUI();
@@ -192,7 +175,7 @@ public class SplitScreenActivity extends Activity {
         launchBtn.setAlpha(canLaunch ? 1f : 0.5f);
     }
 
-    private LinearLayout createSelectionItem(AppInfo appInfo, String hint, int slot) {
+    private LinearLayout createSelectionItem(AppUtils.AppInfo appInfo, String hint, int slot) {
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setGravity(Gravity.CENTER);
@@ -246,39 +229,13 @@ public class SplitScreenActivity extends Activity {
     }
 
     private void loadApps() {
-        PackageManager pm = getPackageManager();
-        Intent mainIntent = new Intent(Intent.ACTION_MAIN, null);
-        mainIntent.addCategory(Intent.CATEGORY_LAUNCHER);
-
-        int flags = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PackageManager.MATCH_ALL : 0;
-        List<ResolveInfo> resolveInfos = pm.queryIntentActivities(mainIntent, flags);
-
+        // 使用 AppUtils 加载应用列表
         appList.clear();
-
-        for (ResolveInfo info : resolveInfos) {
-            if (info.activityInfo == null || info.activityInfo.packageName == null) {
-                continue;
-            }
-            String pkg = info.activityInfo.packageName;
-            if (pkg.equals(getPackageName())) {
-                continue;
-            }
-            String label = info.loadLabel(pm).toString();
-            android.graphics.drawable.Drawable icon = info.loadIcon(pm);
-            appList.add(new AppInfo(label, pkg, icon));
-        }
-
-        Collections.sort(appList, new Comparator<AppInfo>() {
-            @Override
-            public int compare(AppInfo a, AppInfo b) {
-                return a.label.compareToIgnoreCase(b.label);
-            }
-        });
-
+        appList.addAll(AppUtils.loadApps(this));
         appAdapter.notifyDataSetChanged();
     }
 
-    private void toggleAppSelection(AppInfo appInfo) {
+    private void toggleAppSelection(AppUtils.AppInfo appInfo) {
         // 检查是否已选中
         if (selectedApp1 != null && selectedApp1.packageName.equals(appInfo.packageName)) {
             selectedApp1 = null;
@@ -351,13 +308,17 @@ public class SplitScreenActivity extends Activity {
     private void enterSplitScreenMode() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             try {
-                // 尝试通过系统命令进入分屏模式
-                // 注意：这需要系统权限，在某些设备上可能不工作
-                // 我们提供这个方法作为参考
+                // Android 7.0+ 支持分屏模式，但需要用户配合
+                // 应用本身无法强制进入分屏模式，只能通过启动两个应用来触发系统提示
+                // 这里提供一个引导提示
+                Toast.makeText(this, "如需进入分屏模式，请在最近任务中长按应用切换到分屏视图", Toast.LENGTH_LONG).show();
             } catch (Exception e) {
-                // 回退方案：提示用户手动进入分屏
-                Toast.makeText(this, "请使用系统分屏功能", Toast.LENGTH_LONG).show();
+                // 出现异常时提示用户手动操作
+                Toast.makeText(this, "请手动进入系统分屏模式（从屏幕底部向上滑 > 分屏）", Toast.LENGTH_LONG).show();
             }
+        } else {
+            // Android 7.0 以下不支持分屏模式
+            Toast.makeText(this, "您的设备不支持分屏模式（需要Android 7.0及以上）", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -373,7 +334,7 @@ public class SplitScreenActivity extends Activity {
         }
 
         @Override
-        public AppInfo getItem(int position) {
+        public AppUtils.AppInfo getItem(int position) {
             return appList.get(position);
         }
 
@@ -396,7 +357,7 @@ public class SplitScreenActivity extends Activity {
 
             itemLayout.removeAllViews();
 
-            AppInfo appInfo = getItem(position);
+            AppUtils.AppInfo appInfo = getItem(position);
 
             // 图标容器
             LinearLayout iconContainer = new LinearLayout(SplitScreenActivity.this);

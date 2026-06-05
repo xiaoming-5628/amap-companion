@@ -3,11 +3,8 @@ package com.autonavi.companion;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
 import android.graphics.Color;
 import android.graphics.Typeface;
-import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.Bundle;
@@ -26,8 +23,6 @@ import android.widget.Toast;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -36,23 +31,11 @@ public class LauncherActivity extends Activity {
 
     private GridView appGrid;
     private AppAdapter appAdapter;
-    private List<AppInfo> appList = new ArrayList<>();
+    private List<AppUtils.AppInfo> appList = new ArrayList<>();
     private TextView timeText;
     private TextView dateText;
     private Handler timeHandler = new Handler();
     private Runnable timeRunnable;
-
-    static class AppInfo {
-        String label;
-        String packageName;
-        Drawable icon;
-
-        AppInfo(String label, String packageName, Drawable icon) {
-            this.label = label;
-            this.packageName = packageName;
-            this.icon = icon;
-        }
-    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -192,39 +175,13 @@ public class LauncherActivity extends Activity {
     }
 
     private void loadApps() {
-        PackageManager pm = getPackageManager();
-        Intent mainIntent = new Intent(Intent.ACTION_MAIN, null);
-        mainIntent.addCategory(Intent.CATEGORY_LAUNCHER);
-        
-        int flags = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PackageManager.MATCH_ALL : 0;
-        List<ResolveInfo> resolveInfos = pm.queryIntentActivities(mainIntent, flags);
-        
+        // 使用 AppUtils 加载应用列表
         appList.clear();
-        
-        for (ResolveInfo info : resolveInfos) {
-            if (info.activityInfo == null || info.activityInfo.packageName == null) {
-                continue;
-            }
-            String pkg = info.activityInfo.packageName;
-            if (pkg.equals(getPackageName())) {
-                continue;
-            }
-            String label = info.loadLabel(pm).toString();
-            Drawable icon = info.loadIcon(pm);
-            appList.add(new AppInfo(label, pkg, icon));
-        }
-
-        Collections.sort(appList, new Comparator<AppInfo>() {
-            @Override
-            public int compare(AppInfo a, AppInfo b) {
-                return a.label.compareToIgnoreCase(b.label);
-            }
-        });
-
+        appList.addAll(AppUtils.loadApps(this));
         appAdapter.notifyDataSetChanged();
     }
 
-    private void launchApp(AppInfo appInfo) {
+    private void launchApp(AppUtils.AppInfo appInfo) {
         Intent launchIntent = getPackageManager().getLaunchIntentForPackage(appInfo.packageName);
         if (launchIntent != null) {
             launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -232,7 +189,7 @@ public class LauncherActivity extends Activity {
         }
     }
 
-    private void showAppActionMenu(AppInfo appInfo) {
+    private void showAppActionMenu(AppUtils.AppInfo appInfo) {
         // 创建对话框
         android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_NoActionBar);
         
@@ -325,7 +282,7 @@ public class LauncherActivity extends Activity {
         }
 
         @Override
-        public AppInfo getItem(int position) {
+        public AppUtils.AppInfo getItem(int position) {
             return appList.get(position);
         }
 
@@ -348,7 +305,7 @@ public class LauncherActivity extends Activity {
 
             itemLayout.removeAllViews();
 
-            AppInfo appInfo = getItem(position);
+            AppUtils.AppInfo appInfo = getItem(position);
 
             LinearLayout iconContainer = new LinearLayout(LauncherActivity.this);
             iconContainer.setGravity(Gravity.CENTER);

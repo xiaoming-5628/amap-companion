@@ -55,6 +55,8 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 public class OverlayService extends Service {
     private static final String TAG = "AmapCompanion";
     private static final String CHANNEL_ID = "amap_companion";
@@ -71,6 +73,9 @@ public class OverlayService extends Service {
     private static final long PANEL_WIDTH_SHRINK_DELAY_MS = 2500L;
     private static final Pattern CAMERA_LIGHT_PATTERN = Pattern.compile(
             "CameraLightInfo\\{([^}]*)\\}");
+
+    // 重复启动防护：使用 AtomicBoolean 确保线程安全
+    private final AtomicBoolean serviceRunning = new AtomicBoolean(false);
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private WindowManager windowManager;
@@ -231,6 +236,12 @@ public class OverlayService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        // 重复启动防护：检查服务是否已经在运行
+        if (serviceRunning.get()) {
+            Log.w(TAG, "OverlayService already running, skipping duplicate creation");
+            return;
+        }
+        serviceRunning.set(true);
         startForeground(1, buildNotification());
         registerAmapReceivers();
         stopSelfIfNoVisuals();
@@ -250,6 +261,11 @@ public class OverlayService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        // 重复启动防护：检查服务是否已经在运行
+        if (!serviceRunning.compareAndSet(false, true)) {
+            Log.w(TAG, "OverlayService already running, skipping duplicate start");
+            return START_STICKY;
+        }
         if (!onCreateDelayed) {
             ensureOverlay();
             ensureClusterMirror();
@@ -259,6 +275,19 @@ public class OverlayService extends Service {
             requestLaneInfo();
         }
         return START_STICKY;
+    }
+
+    /**
+     * 当应用从最近任务中移除时调用
+     * 用于处理用户滑动关闭应用的情况
+     */
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        super.onTaskRemoved(rootIntent);
+        Log.d(TAG, "onTaskRemoved called, rootIntent=" + rootIntent);
+        // 根据配置决定是否在任务移除后停止服务
+        // 保留服务运行，因为悬浮窗需要持续显示
+        // 如果需要完全停止服务，可以在这里调用 stopSelf()
     }
 
     @Override
@@ -285,6 +314,8 @@ public class OverlayService extends Service {
             }
         }
         super.onDestroy();
+        // 重置服务运行标志，允许下次重新启动
+        serviceRunning.set(false);
     }
 
     @Override

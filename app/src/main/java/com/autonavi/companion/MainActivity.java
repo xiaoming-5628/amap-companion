@@ -51,6 +51,8 @@ import android.widget.Toast;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -130,6 +132,8 @@ public class MainActivity extends Activity {
     private static final String TARGET_PACKAGE_PREFIX = "com.autonavi.";
     private static final int REQUEST_READ_LOGS_PERMISSION = 7001;
     private static final int REQUEST_STORAGE_PERMISSIONS = 7002;
+    // 使用单例线程池复用线程，避免每次检查更新都创建新线程
+    private static final ExecutorService updateExecutor = Executors.newSingleThreadExecutor();
 
     private TextView targetText;
     private TextView updateText;
@@ -161,6 +165,57 @@ public class MainActivity extends Activity {
         targetText.postDelayed(() -> {
             checkForUpdates(false);
         }, 2000L);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // 关闭更新检查线程池，释放资源
+        updateExecutor.shutdown();
+    }
+
+    /**
+     * 处理权限请求结果
+     * 当用户同意或拒绝权限后，系统会回调此方法
+     */
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        switch (requestCode) {
+            case REQUEST_READ_LOGS_PERMISSION:
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    Toast.makeText(this, "READ_LOGS 权限已授权", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(this, "READ_LOGS 权限被拒绝，日志功能可能受限", Toast.LENGTH_LONG).show();
+                }
+                break;
+            case REQUEST_STORAGE_PERMISSIONS:
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    Toast.makeText(this, "存储权限已授权", Toast.LENGTH_SHORT).show();
+                } else {
+                    // 权限被拒绝，提示用户手动去设置中开启
+                    Toast.makeText(this, "存储权限被拒绝，如需保存日志到存储卡请在设置中开启权限", Toast.LENGTH_LONG).show();
+                    // 提供引导用户去设置的选项
+                    new AlertDialog.Builder(this)
+                            .setTitle("需要存储权限")
+                            .setMessage("保存日志到 /sdcard 需要存储权限。是否前往设置页面手动开启？")
+                            .setPositiveButton("去设置", (d, w) -> {
+                                try {
+                                    Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                                    intent.setData(Uri.parse("package:" + getPackageName()));
+                                    startActivity(intent);
+                                } catch (Throwable t) {
+                                    Toast.makeText(this, "无法打开设置页面", Toast.LENGTH_SHORT).show();
+                                }
+                            })
+                            .setNegativeButton("取消", null)
+                            .show();
+                }
+                break;
+            default:
+                // 未知权限请求，不做处理
+                break;
+        }
     }
 
     private void autoStartServiceOnAppOpen() {
@@ -1427,8 +1482,37 @@ public class MainActivity extends Activity {
         int lines = 0;
         try {
             process = Runtime.getRuntime().exec(command);
+            
+            // 使用线程等待进程执行，设置超时为5秒
+            final int[] exitHolder = new int[1];
+            final boolean[] finished = new boolean[1];
+            Thread waitThread = new Thread(() -> {
+                try {
+                    exitHolder[0] = process.waitFor();
+                } catch (InterruptedException e) {
+                    // 被中断
+                } finally {
+                    finished[0] = true;
+                }
+            });
+            waitThread.start();
+            
+            // 等待最多5秒
+            waitThread.join(5000);
+            
+            // 检查进程是否还在运行
+            if (!finished[0]) {
+                // 超时，强制终止进程
+                waitThread.interrupt();
+                if (process != null) {
+                    process.destroy();
+                }
+                sb.append("\nlogcat command timeout (5s), process killed\n");
+                return 0;
+            }
+            
             lines = appendStream(sb, process.getInputStream());
-            int exit = process.waitFor();
+            int exit = exitHolder[0];
             StringBuilder err = new StringBuilder();
             appendStream(err, process.getErrorStream());
             if (err.length() > 0) {
@@ -1591,14 +1675,15 @@ public class MainActivity extends Activity {
             return;
         }
         updateUpdateText("\u6b63\u5728\u68c0\u67e5\u66f4\u65b0...\n" + url);
-        new Thread(() -> {
+        // 使用线程池复用线程，避免频繁创建销毁线程
+        updateExecutor.execute(() -> {
             try {
                 Updater.UpdateInfo info = Updater.check(this, url);
                 runOnUiThread(() -> handleUpdateInfo(info, manual));
             } catch (Throwable t) {
                 runOnUiThread(() -> updateUpdateText("\u66f4\u65b0\u5931\u8d25: " + t.getMessage()));
             }
-        }).start();
+        });
     }
 
     private void handleUpdateInfo(Updater.UpdateInfo info, boolean manual) {

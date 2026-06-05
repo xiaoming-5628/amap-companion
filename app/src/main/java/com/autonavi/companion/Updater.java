@@ -143,20 +143,32 @@ final class Updater {
 
     private static String readText(String urlText) throws Exception {
         HttpURLConnection conn = connect(urlText);
+        BufferedReader reader = null;
         try {
             int code = conn.getResponseCode();
             if (code < 200 || code >= 300) {
                 throw new IllegalStateException("HTTP " + code);
             }
-            BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream(), "UTF-8"));
+            reader = new BufferedReader(new InputStreamReader(conn.getInputStream(), "UTF-8"));
             StringBuilder sb = new StringBuilder();
             String line;
             while ((line = reader.readLine()) != null) {
                 sb.append(line).append('\n');
             }
-            reader.close();
             return sb.toString();
+        } catch (java.net.SocketTimeoutException e) {
+            android.util.Log.e("Updater", "读取响应超时: " + urlText, e);
+            throw e;
+        } catch (java.io.IOException e) {
+            android.util.Log.e("Updater", "读取响应流失败: " + urlText, e);
+            throw e;
         } finally {
+            if (reader != null) {
+                try {
+                    reader.close();
+                } catch (Throwable ignored) {
+                }
+            }
             conn.disconnect();
         }
     }

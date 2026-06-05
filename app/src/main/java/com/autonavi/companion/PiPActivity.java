@@ -5,11 +5,9 @@ import android.app.PictureInPictureParams;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
-import android.graphics.Rect;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.util.Rational;
 import android.view.Gravity;
 import android.view.View;
@@ -26,8 +24,6 @@ import android.widget.Toast;
 
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 
 public class PiPActivity extends Activity {
@@ -38,22 +34,10 @@ public class PiPActivity extends Activity {
 
     private ListView appListView;
     private AppAdapter appAdapter;
-    private List<AppInfo> appList = new ArrayList<>();
+    private List<AppUtils.AppInfo> appList = new ArrayList<>();
     private SharedPreferences prefs;
     private String selectedPackage;
     private String selectedLabel;
-
-    static class AppInfo {
-        String label;
-        String packageName;
-        android.graphics.drawable.Drawable icon;
-
-        AppInfo(String label, String packageName, android.graphics.drawable.Drawable icon) {
-            this.label = label;
-            this.packageName = packageName;
-            this.icon = icon;
-        }
-    }
 
     public static void start(Context context, boolean startPiP) {
         Intent intent = new Intent(context, PiPActivity.class);
@@ -172,39 +156,13 @@ public class PiPActivity extends Activity {
     }
 
     private void loadApps() {
-        PackageManager pm = getPackageManager();
-        Intent mainIntent = new Intent(Intent.ACTION_MAIN, null);
-        mainIntent.addCategory(Intent.CATEGORY_LAUNCHER);
-
-        int flags = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PackageManager.MATCH_ALL : 0;
-        List<ResolveInfo> resolveInfos = pm.queryIntentActivities(mainIntent, flags);
-
+        // 使用 AppUtils 加载应用列表
         appList.clear();
-
-        for (ResolveInfo info : resolveInfos) {
-            if (info.activityInfo == null || info.activityInfo.packageName == null) {
-                continue;
-            }
-            String pkg = info.activityInfo.packageName;
-            if (pkg.equals(getPackageName())) {
-                continue;
-            }
-            String label = info.loadLabel(pm).toString();
-            android.graphics.drawable.Drawable icon = info.loadIcon(pm);
-            appList.add(new AppInfo(label, pkg, icon));
-        }
-
-        Collections.sort(appList, new Comparator<AppInfo>() {
-            @Override
-            public int compare(AppInfo a, AppInfo b) {
-                return a.label.compareToIgnoreCase(b.label);
-            }
-        });
-
+        appList.addAll(AppUtils.loadApps(this));
         appAdapter.notifyDataSetChanged();
     }
 
-    private void selectApp(AppInfo appInfo) {
+    private void selectApp(AppUtils.AppInfo appInfo) {
         selectedPackage = appInfo.packageName;
         selectedLabel = appInfo.label;
 
@@ -230,10 +188,33 @@ public class PiPActivity extends Activity {
             startActivity(launchIntent);
         }
 
-        // 延迟进入画中画模式
-        new android.os.Handler().postDelayed(() -> {
-            enterPictureInPictureMode();
-        }, 500);
+        // 延迟进入画中画模式，使用更长的延迟和重试机制确保应用已启动
+        // 设备性能差异较大，500ms可能在某些设备上不够
+        android.os.Handler pipHandler = new android.os.Handler();
+        Runnable pipRunnable = new Runnable() {
+            private int retryCount = 0;
+            private static final int MAX_RETRIES = 3;
+            private static final long INITIAL_DELAY_MS = 800;
+            private static final long RETRY_DELAY_MS = 500;
+
+            @Override
+            public void run() {
+                try {
+                    enterPictureInPictureMode();
+                } catch (Exception e) {
+                    // 如果进入PiP失败，可能是应用还没完全启动，重试几次
+                    if (retryCount < MAX_RETRIES) {
+                        retryCount++;
+                        Log.e("PiPActivity", "进入画中画模式失败，重试 " + retryCount + "/" + MAX_RETRIES);
+                        pipHandler.postDelayed(this, RETRY_DELAY_MS);
+                    } else {
+                        Log.e("PiPActivity", "进入画中画模式失败，已达到最大重试次数");
+                        Toast.makeText(PiPActivity.this, "无法进入画中画模式", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            }
+        };
+        pipHandler.postDelayed(pipRunnable, INITIAL_DELAY_MS);
     }
 
     @Override
@@ -329,7 +310,7 @@ public class PiPActivity extends Activity {
         }
 
         @Override
-        public AppInfo getItem(int position) {
+        public AppUtils.AppInfo getItem(int position) {
             return appList.get(position);
         }
 
@@ -352,7 +333,7 @@ public class PiPActivity extends Activity {
 
             itemLayout.removeAllViews();
 
-            AppInfo appInfo = getItem(position);
+            AppUtils.AppInfo appInfo = getItem(position);
 
             ImageView iconView = new ImageView(PiPActivity.this);
             iconView.setImageDrawable(appInfo.icon);

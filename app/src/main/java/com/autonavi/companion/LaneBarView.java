@@ -8,11 +8,10 @@ import android.graphics.DashPathEffect;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RectF;
+import android.util.LruCache;
 import android.view.View;
 
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
 
 public class LaneBarView extends View {
     private static final float FRAME_SCALE = 0.78f;
@@ -26,7 +25,8 @@ public class LaneBarView extends View {
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF rect = new RectF();
     private final Path path = new Path();
-    private final Map<String, Bitmap> iconCache = new HashMap<>();
+    // 使用 LruCache 限制图标缓存大小为50个，防止内存溢出
+    private final LruCache<String, Bitmap> iconCache = new LruCache<>(50);
     private int[] lanes = new int[]{15, 15, 15, 15};
     private boolean[] recommend = new boolean[]{true, true, true, true};
     private boolean cruiseLaneStyle = true;
